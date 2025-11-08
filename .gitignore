@@ -1,0 +1,24 @@
+# Virtual environments
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE / OS clutter
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Model weights and artifacts
+yolov8n.pt
+output/
+
+# User-provided datasets and documents
+data/faces/
+paper/
+
+# Test cache
+.pytest_cache/
+
+
