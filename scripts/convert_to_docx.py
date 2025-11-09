@@ -1,8 +1,12 @@
 """
-Utility to convert the IEEE-style markdown paper into a DOCX file.
+Utility to convert Markdown documents into formatted DOCX files.
+
+Supports IEEE-style two-column papers and single-column resumes by toggling
+command-line arguments.
 """
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 from docx import Document
@@ -11,18 +15,16 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 
 
-SOURCE = Path("paper/face_object_recognition_paper.md")
-TARGET = Path("paper/face_object_recognition_paper.docx")
-
-
-def add_heading_paragraph(document: Document, text: str, italic: bool = False) -> None:
+def add_heading_paragraph(
+    document: Document, text: str, italic: bool = False, font_size: float = 10
+) -> None:
     """
-    Add a heading-styled paragraph with 10 pt bold text.
+    Add a heading-styled paragraph with configurable styling.
     """
     paragraph = document.add_paragraph()
     run = paragraph.add_run(text)
     run.bold = True
-    run.font.size = Pt(10)
+    run.font.size = Pt(font_size)
     if italic:
         run.italic = True
 
@@ -69,27 +71,38 @@ def add_table(document: Document, rows: list[str]) -> None:
             table.cell(row_idx, col_idx).text = cell_text
 
 
-def convert_markdown_to_docx() -> None:
-    if not SOURCE.exists():
-        raise FileNotFoundError(f"Source markdown not found: {SOURCE}")
+def convert_markdown_to_docx(
+    source: Path,
+    target: Path,
+    *,
+    font_name: str = "Times New Roman",
+    base_font_size: float = 10,
+    title_font_size: float = 26,
+    two_column: bool = False,
+) -> None:
+    """
+    Convert a Markdown file to DOCX with configurable layout and typography.
+    """
+    if not source.exists():
+        raise FileNotFoundError(f"Source markdown not found: {source}")
 
-    lines = SOURCE.read_text(encoding="utf-8").splitlines()
+    lines = source.read_text(encoding="utf-8").splitlines()
     document = Document()
 
-    # Configure Normal style to IEEE defaults (Times New Roman, 10 pt).
     normal_style = document.styles["Normal"]
-    normal_style.font.name = "Times New Roman"
-    normal_style.font.size = Pt(10)
+    normal_style.font.name = font_name
+    normal_style.font.size = Pt(base_font_size)
 
     for section in document.sections:
         section.left_margin = Inches(0.75)
         section.right_margin = Inches(0.75)
         section.top_margin = Inches(1.0)
         section.bottom_margin = Inches(1.0)
-        cols = section._sectPr.xpath("./w:cols")
-        if cols:
-            cols[0].set(qn("w:num"), "2")
-            cols[0].set(qn("w:space"), "720")
+        if two_column:
+            cols = section._sectPr.xpath("./w:cols")
+            if cols:
+                cols[0].set(qn("w:num"), "2")
+                cols[0].set(qn("w:space"), "720")
 
     i = 0
     in_code_block = False
@@ -112,19 +125,23 @@ def convert_markdown_to_docx() -> None:
             title_paragraph = document.add_paragraph()
             title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
             run = title_paragraph.add_run(title)
-            run.font.size = Pt(26)
+            run.font.size = Pt(title_font_size)
             run.bold = True
-            run.font.name = "Times New Roman"
+            run.font.name = font_name
             i += 1
             continue
 
         if stripped.startswith("## "):
-            add_heading_paragraph(document, stripped[3:].strip())
+            add_heading_paragraph(
+                document, stripped[3:].strip(), font_size=base_font_size
+            )
             i += 1
             continue
 
         if stripped.startswith("### "):
-            add_heading_paragraph(document, stripped[4:].strip(), italic=True)
+            add_heading_paragraph(
+                document, stripped[4:].strip(), italic=True, font_size=base_font_size
+            )
             i += 1
             continue
 
@@ -186,11 +203,54 @@ def convert_markdown_to_docx() -> None:
         document.add_paragraph(line.strip())
         i += 1
 
-    TARGET.parent.mkdir(parents=True, exist_ok=True)
-    document.save(TARGET)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    document.save(target)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Convert Markdown to DOCX.")
+    parser.add_argument("source", type=Path, help="Path to the Markdown file.")
+    parser.add_argument(
+        "--target",
+        type=Path,
+        help="Optional output DOCX path (defaults to same name).",
+    )
+    parser.add_argument(
+        "--two-column",
+        action="store_true",
+        help="Use a two-column layout (IEEE-style).",
+    )
+    parser.add_argument(
+        "--title-size",
+        type=float,
+        default=26.0,
+        help="Font size for top-level title (default: 26).",
+    )
+    parser.add_argument(
+        "--font-name",
+        default="Times New Roman",
+        help="Base font name (default: Times New Roman).",
+    )
+    parser.add_argument(
+        "--font-size",
+        type=float,
+        default=10.0,
+        help="Base body font size (default: 10).",
+    )
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    convert_markdown_to_docx()
-
+    args = parse_args()
+    output_path = (
+        args.target if args.target is not None else args.source.with_suffix(".docx")
+    )
+    convert_markdown_to_docx(
+        args.source,
+        output_path,
+        font_name=args.font_name,
+        base_font_size=args.font_size,
+        title_font_size=args.title_size,
+        two_column=args.two_column,
+    )
 
