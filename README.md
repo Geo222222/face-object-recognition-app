@@ -1,5 +1,7 @@
 # Face and Object Recognition Application
 
+![CI](https://github.com/Geo222222/face-object-recognition-app/actions/workflows/tests.yml/badge.svg)
+
 This project shows how to pair modern computer vision models to identify people and contextual objects in real time. The app streams webcam frames through Ultralytics YOLOv8 for object detection and the `face_recognition` embedding pipeline for known-face lookup, then overlays both results live.
 
 ## Highlights
