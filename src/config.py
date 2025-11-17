@@ -20,6 +20,11 @@ class AppConfig:
     device: str = "cpu"
     face_dataset_dir: Path = Path("data/faces")
     output_dir: Path = Path("output")
+    enable_age_estimation: bool = True
+    analysis_frame_skip: int = 5  # Analyze every Nth frame (1 = every frame, higher = less frequent)
+    analysis_cache_frames: int = 10  # Cache analysis results for N frames
+    recognition_stability_frames: int = 5  # Minimum consecutive frames with same match before showing name
+    unknown_stability_frames: int = 5  # Minimum consecutive frames with Unknown before switching from recognized name
     allowed_object_classes: List[str] = field(
         default_factory=lambda: [
             "person",
@@ -35,7 +40,7 @@ class AppConfig:
             "bus",
             "truck",
             "car",
-            "school bus",  # Custom label variants
+            "school bus",
         ]
     )
 
